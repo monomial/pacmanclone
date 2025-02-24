@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { CELL_SIZE } from '../constants/gameConstants';
 
 interface PacManProps {
@@ -14,13 +15,13 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
       Animated.sequence([
         Animated.timing(mouthAnimation, {
           toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
+          duration: 160, // Classic arcade speed
+          useNativeDriver: false, // SVG paths can't use native driver
         }),
         Animated.timing(mouthAnimation, {
           toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
+          duration: 160,
+          useNativeDriver: false,
         }),
       ]).start(() => animate());
     };
@@ -42,28 +43,53 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
     }
   };
 
-  const mouthAngle = mouthAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 30]
-  });
+  // Create the classic Pac-Man SVG path
+  const AnimatedPath = Animated.createAnimatedComponent(Path);
+  
+  // Generate the Pac-Man SVG arc path with dynamic mouth angle
+  const getPacManPath = (mouthAngle: number) => {
+    const size = CELL_SIZE * 0.8;
+    const radius = size / 2;
+    const center = radius;
+    
+    // Convert angle from degrees to radians
+    const angleRad = (mouthAngle * Math.PI) / 180;
+    const startAngle = angleRad / 2;
+    const endAngle = 2 * Math.PI - (angleRad / 2);
+    
+    // Calculate start and end points
+    const startX = center + radius * Math.cos(startAngle);
+    const startY = center - radius * Math.sin(startAngle);
+    const endX = center + radius * Math.cos(endAngle);
+    const endY = center - radius * Math.sin(endAngle);
+    
+    // Large arc flag is 1 for angles > 180 degrees
+    const largeArcFlag = mouthAngle > 180 ? 0 : 1;
+    
+    // Move to center, line to start point, arc to end point, line back to center
+    return `M ${center},${center} L ${startX},${startY} A ${radius},${radius} 0 ${largeArcFlag} 1 ${endX},${endY} Z`;
+  };
 
   return (
     <View style={[styles.container, { transform: [{ rotate: getRotationDegrees() }] }]}>
-      <Animated.View 
-        style={[
-          styles.pacman,
-          {
-            borderTopRightRadius: mouthAngle.interpolate({
-              inputRange: [0, 30],
-              outputRange: [CELL_SIZE * 0.4, 0]
-            }),
-            borderBottomRightRadius: mouthAngle.interpolate({
-              inputRange: [0, 30],
-              outputRange: [CELL_SIZE * 0.4, 0]
-            })
-          }
-        ]}
-      />
+      {/* First draw a full yellow circle as the base */}
+      <View style={styles.fullCircle} />
+      
+      {/* Then overlay the SVG with a "mouth" cutout */}
+      <Svg 
+        width={CELL_SIZE * 0.8} 
+        height={CELL_SIZE * 0.8} 
+        viewBox={`0 0 ${CELL_SIZE * 0.8} ${CELL_SIZE * 0.8}`}
+        style={styles.svgOverlay}
+      >
+        <AnimatedPath
+          d={mouthAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [getPacManPath(30), getPacManPath(60)]  // 30° to 60° mouth angle
+          })}
+          fill="black" // The mouth cutout is black
+        />
+      </Svg>
     </View>
   );
 };
@@ -74,13 +100,17 @@ const styles = StyleSheet.create({
     height: CELL_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  pacman: {
+  fullCircle: {
+    position: 'absolute',
     width: CELL_SIZE * 0.8,
     height: CELL_SIZE * 0.8,
-    backgroundColor: '#FFFF00',
-    borderTopLeftRadius: CELL_SIZE * 0.4,
-    borderBottomLeftRadius: CELL_SIZE * 0.4,
+    borderRadius: CELL_SIZE * 0.4,
+    backgroundColor: '#FFFF00', // Classic Pac-Man yellow
+  },
+  svgOverlay: {
+    position: 'absolute',
   }
 });
 
