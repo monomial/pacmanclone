@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
 import { CELL_SIZE } from '../constants/gameConstants';
 
 interface PacManProps {
@@ -15,13 +14,13 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
       Animated.sequence([
         Animated.timing(mouthAnimation, {
           toValue: 1,
-          duration: 160, // Classic arcade speed
-          useNativeDriver: false, // SVG paths can't use native driver
+          duration: 150,
+          useNativeDriver: true,
         }),
         Animated.timing(mouthAnimation, {
           toValue: 0,
-          duration: 160,
-          useNativeDriver: false,
+          duration: 150,
+          useNativeDriver: true,
         }),
       ]).start(() => animate());
     };
@@ -43,53 +42,46 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
     }
   };
 
-  // Create the classic Pac-Man SVG path
-  const AnimatedPath = Animated.createAnimatedComponent(Path);
+  // Map animation value to mouth angle
+  const mouthAngle = mouthAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [5, 50] // 5 to 50 degrees (almost closed to wide open)
+  });
   
-  // Generate the Pac-Man SVG arc path with dynamic mouth angle
-  const getPacManPath = (mouthAngle: number) => {
-    const size = CELL_SIZE * 0.8;
-    const radius = size / 2;
-    const center = radius;
-    
-    // Convert angle from degrees to radians
-    const angleRad = (mouthAngle * Math.PI) / 180;
-    const startAngle = angleRad / 2;
-    const endAngle = 2 * Math.PI - (angleRad / 2);
-    
-    // Calculate start and end points
-    const startX = center + radius * Math.cos(startAngle);
-    const startY = center - radius * Math.sin(startAngle);
-    const endX = center + radius * Math.cos(endAngle);
-    const endY = center - radius * Math.sin(endAngle);
-    
-    // Large arc flag is 1 for angles > 180 degrees
-    const largeArcFlag = mouthAngle > 180 ? 0 : 1;
-    
-    // Move to center, line to start point, arc to end point, line back to center
-    return `M ${center},${center} L ${startX},${startY} A ${radius},${radius} 0 ${largeArcFlag} 1 ${endX},${endY} Z`;
-  };
-
   return (
     <View style={[styles.container, { transform: [{ rotate: getRotationDegrees() }] }]}>
-      {/* First draw a full yellow circle as the base */}
-      <View style={styles.fullCircle} />
-      
-      {/* Then overlay the SVG with a "mouth" cutout */}
-      <Svg 
-        width={CELL_SIZE * 0.8} 
-        height={CELL_SIZE * 0.8} 
-        viewBox={`0 0 ${CELL_SIZE * 0.8} ${CELL_SIZE * 0.8}`}
-        style={styles.svgOverlay}
-      >
-        <AnimatedPath
-          d={mouthAnimation.interpolate({
-            inputRange: [0, 1],
-            outputRange: [getPacManPath(30), getPacManPath(60)]  // 30° to 60° mouth angle
-          })}
-          fill="black" // The mouth cutout is black
+      <View style={styles.pacmanBase}>
+        <Animated.View 
+          style={[
+            styles.pacmanTop,
+            {
+              transform: [
+                { 
+                  rotate: mouthAngle.interpolate({
+                    inputRange: [5, 50],
+                    outputRange: ['5deg', '50deg']
+                  })
+                }
+              ]
+            }
+          ]}
         />
-      </Svg>
+        <Animated.View 
+          style={[
+            styles.pacmanBottom,
+            {
+              transform: [
+                { 
+                  rotate: mouthAngle.interpolate({
+                    inputRange: [5, 50],
+                    outputRange: ['-5deg', '-50deg']
+                  })
+                }
+              ]
+            }
+          ]}
+        />
+      </View>
     </View>
   );
 };
@@ -100,17 +92,33 @@ const styles = StyleSheet.create({
     height: CELL_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
-  fullCircle: {
-    position: 'absolute',
+  pacmanBase: {
     width: CELL_SIZE * 0.8,
     height: CELL_SIZE * 0.8,
-    borderRadius: CELL_SIZE * 0.4,
-    backgroundColor: '#FFFF00', // Classic Pac-Man yellow
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  svgOverlay: {
+  pacmanTop: {
+    width: CELL_SIZE * 0.8,
+    height: CELL_SIZE * 0.4,
+    backgroundColor: '#FFFF00', // Classic Pac-Man yellow
+    borderTopLeftRadius: CELL_SIZE * 0.4,
+    borderTopRightRadius: CELL_SIZE * 0.4,
     position: 'absolute',
+    top: 0,
+    transformOrigin: 'center bottom',
+  },
+  pacmanBottom: {
+    width: CELL_SIZE * 0.8,
+    height: CELL_SIZE * 0.4,
+    backgroundColor: '#FFFF00', // Classic Pac-Man yellow
+    borderBottomLeftRadius: CELL_SIZE * 0.4,
+    borderBottomRightRadius: CELL_SIZE * 0.4,
+    position: 'absolute',
+    bottom: 0,
+    transformOrigin: 'center top',
   }
 });
 
