@@ -4,33 +4,59 @@ import { CELL_SIZE } from '../constants/gameConstants';
 
 interface PacManProps {
   direction: 'right' | 'left' | 'up' | 'down';
+  isMoving: boolean; // Add isMoving prop to control animation
 }
 
-const PacMan: React.FC<PacManProps> = ({ direction }) => {
+const PacMan: React.FC<PacManProps> = ({ direction, isMoving }) => {
   const mouthAnimation = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
+  // Animation effect that responds to movement state
   useEffect(() => {
-    const animate = () => {
-      Animated.sequence([
-        Animated.timing(mouthAnimation, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(mouthAnimation, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start(() => animate());
-    };
-
-    animate();
+    // Stop any existing animation
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    
+    // Only animate when moving
+    if (isMoving) {
+      const animate = () => {
+        animationRef.current = Animated.sequence([
+          Animated.timing(mouthAnimation, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(mouthAnimation, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]);
+        
+        animationRef.current.start(() => {
+          if (isMoving) { // Check again in case it changed during animation
+            animate();
+          }
+        });
+      };
+      
+      animate();
+    } else {
+      // When not moving, reset to closed mouth (or slightly open)
+      Animated.timing(mouthAnimation, {
+        toValue: 0.1, // Slightly open mouth when stopped
+        duration: 100,
+        useNativeDriver: true,
+      }).start();
+    }
 
     return () => {
-      mouthAnimation.stopAnimation();
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
     };
-  }, []);
+  }, [isMoving, direction]); // Re-run when moving state or direction changes
 
   const getRotationDegrees = () => {
     switch (direction) {
@@ -59,7 +85,7 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
                 { 
                   rotate: mouthAngle.interpolate({
                     inputRange: [5, 50],
-                    outputRange: ['5deg', '50deg']
+                    outputRange: ['-5deg', '-50deg'] // Reversed rotation to fix mouth direction
                   })
                 }
               ]
@@ -74,7 +100,7 @@ const PacMan: React.FC<PacManProps> = ({ direction }) => {
                 { 
                   rotate: mouthAngle.interpolate({
                     inputRange: [5, 50],
-                    outputRange: ['-5deg', '-50deg']
+                    outputRange: ['5deg', '50deg'] // Reversed rotation to fix mouth direction
                   })
                 }
               ]

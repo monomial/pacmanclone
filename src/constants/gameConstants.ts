@@ -48,4 +48,9 @@ export const MAZE_LAYOUT = [
 ];
 
 const window = Dimensions.get('window');
-export const CELL_SIZE = Math.floor(window.width / GRID_WIDTH); 
+// Calculate cell size based on available screen height to ensure full board visibility
+// Use min dimension to ensure fit on both landscape and portrait orientations
+export const CELL_SIZE = Math.min(
+  Math.floor(window.width / GRID_WIDTH), 
+  Math.floor((window.height - 100) / GRID_HEIGHT) // 100px for scoring and controls
+);
